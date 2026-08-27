@@ -1,1 +1,5 @@
 fontbakery[googlefonts]==1.1.0
+axisregistry==0.4.16
+gflanguages==0.7.7
+glyphsets==1.1.0
+protobuf==3.20.3
