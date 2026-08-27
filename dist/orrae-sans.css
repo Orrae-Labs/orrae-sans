@@ -1,0 +1,16 @@
+@font-face {
+  font-family: "Orrae Sans";
+  src: url("./OrraeSans-Regular.woff2") format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.orrae-sans {
+  font-family: "Orrae Sans", sans-serif;
+  font-kerning: normal;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  font-feature-settings: "kern" 1;
+}
