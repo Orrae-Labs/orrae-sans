@@ -28,7 +28,7 @@ jobs:
 
       - name: Install build tools
         run: |
-          brew install fontforge harfbuzz woff2
+          brew install fontforge harfbuzz woff2 zstd
           python -m pip install --requirement requirements.txt
 
       - name: Reject non-font media
@@ -47,8 +47,13 @@ jobs:
           FONTTOOLS_PYTHON: python
         run: ./src/build-font.sh
 
-      - name: Confirm generated files are current
-        run: git diff --exit-code -- dist
+      - name: Confirm generated files are not tracked
+        shell: bash
+        run: |
+          if git ls-files 'dist/**' | grep -q .; then
+            echo 'Generated files in dist must not be committed.' >&2
+            exit 1
+          fi
 
       - name: Package downloads
         run: ./src/package-release.sh "${GITHUB_REF_NAME//\//-}"
@@ -58,8 +63,7 @@ jobs:
         with:
           name: orrae-sans-${{ github.run_id }}
           path: |
-            release/*.zip
-            release/*.tar.gz
+            release/*.tar.zst
             release/SHA256SUMS
           if-no-files-found: error
 
@@ -69,8 +73,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
-            release/*.zip \
-            release/*.tar.gz \
+            release/*.tar.zst \
             release/SHA256SUMS \
             --verify-tag \
             --generate-notes \

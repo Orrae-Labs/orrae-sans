@@ -31,6 +31,7 @@ cp "$type_root/dist/OrraeSans-Regular.ttf" "$type_root/dist/OrraeSans-Regular-we
 "$woff2_bin" "$type_root/dist/OrraeSans-Regular-web.ttf"
 mv "$type_root/dist/OrraeSans-Regular-web.woff2" "$type_root/dist/OrraeSans-Regular.woff2"
 rm "$type_root/dist/OrraeSans-Regular-web.ttf"
+cp "$type_root/src/orrae-sans.css" "$type_root/dist/orrae-sans.css"
 
 "$fonttools_python" -m fontTools.ttx -l "$type_root/dist/OrraeSans-Regular.ttf"
 "$fonttools_python" -m fontTools.ttx -l "$type_root/dist/OrraeSans-Regular.otf"

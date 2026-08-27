@@ -17,12 +17,20 @@ deliberate display use.
 
 ## Downloads
 
-- [`OrraeSans-Regular.otf`](dist/OrraeSans-Regular.otf) — recommended for
-  design and print applications
-- [`OrraeSans-Regular.ttf`](dist/OrraeSans-Regular.ttf) — broad desktop and
-  legacy application compatibility
-- [`OrraeSans-Regular.woff2`](dist/OrraeSans-Regular.woff2) — web delivery
-- [`orrae-sans.css`](dist/orrae-sans.css) — web font declaration
+Prebuilt fonts are published only through [GitHub Releases](../../releases).
+Each release provides a versioned `.tar.zst` package containing:
+
+- `OrraeSans-Regular.otf` — recommended for design and print applications
+- `OrraeSans-Regular.ttf` — broad desktop and legacy compatibility
+- `OrraeSans-Regular.woff2` — web delivery
+- `orrae-sans.css` — web-font declaration
+- checksums, documentation, and the applicable license
+
+Extract a package with:
+
+```sh
+zstd -dc orrae-sans-VERSION.tar.zst | tar -xf -
+```
 
 Do not install the OTF and TTF simultaneously. They expose the same family and
 style names.
@@ -36,25 +44,25 @@ brew install fonttools fontforge woff2 harfbuzz
 ./src/build-font.sh
 ```
 
-The build regenerates the TTF, OTF, and WOFF2 from source. TTF and OTF outputs
-are checked with FontForge `fontlint`; WOFF2 tables and OpenType shaping are
-also verified.
+The build regenerates the TTF, OTF, and WOFF2 into the ignored `dist/`
+directory. TTF and OTF outputs are checked with FontForge `fontlint`; WOFF2
+tables and OpenType shaping are also verified.
 
-Verify the committed release files with:
+Verify a local build with:
 
 ```sh
 cd dist
 shasum -a 256 -c SHA256SUMS
 ```
 
-The deterministic source is canonical. OTF, TTF, and WOFF2 files are generated
-deliverables.
+The deterministic source is canonical. Generated font binaries are never
+committed.
 
 ## Automated builds and releases
 
 GitHub Actions rebuilds and validates the font on every pull request and push.
 Pushing a version tag such as `v0.2.0` also creates a GitHub Release containing
-font-only ZIP and tar.gz download packages plus checksums.
+a font-only `.tar.zst` package plus its checksum.
 
 ## License
 

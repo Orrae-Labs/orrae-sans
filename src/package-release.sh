@@ -25,7 +25,10 @@ fi
 
 (
   cd "$project_root/release"
-  zip -q -X -r "$package_name.zip" "$package_name"
-  tar -czf "$package_name.tar.gz" "$package_name"
-  shasum -a 256 "$package_name.zip" "$package_name.tar.gz" > SHA256SUMS
+  COPYFILE_DISABLE=1 tar -cf - "$package_name" | \
+    zstd -19 --threads=0 --no-progress -o "$package_name.tar.zst"
+  shasum -a 256 "$package_name.tar.zst" > SHA256SUMS
+  shasum -a 256 -c SHA256SUMS
+  zstd --test "$package_name.tar.zst"
+  zstd -dc "$package_name.tar.zst" | tar -tf - >/dev/null
 )
