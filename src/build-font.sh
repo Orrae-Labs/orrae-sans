@@ -4,40 +4,35 @@ set -euo pipefail
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 type_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
 
-if [[ -n "${FONTTOOLS_PYTHON:-}" ]]; then
-  fonttools_python=$FONTTOOLS_PYTHON
-elif command -v brew >/dev/null 2>&1 && [[ -x "$(brew --prefix fonttools)/libexec/bin/python" ]]; then
-  fonttools_python="$(brew --prefix fonttools)/libexec/bin/python"
-else
-  fonttools_python=${PYTHON:-python3}
-fi
-
-fontforge_bin=${FONTFORGE_BIN:-$(command -v fontforge)}
-woff2_bin=${WOFF2_BIN:-$(command -v woff2_compress)}
+fonttools_python=${FONTTOOLS_PYTHON:-${PYTHON:-python3}}
+fontmake_bin=${FONTMAKE_BIN:-$(command -v fontmake)}
+canonical_ufo="$type_root/sources/OrraeSans-Regular.ufo"
+generated_ufo="$type_root/build/OrraeSans-Regular.ufo"
 
 mkdir -p "$type_root/build" "$type_root/dist"
 
-"$fonttools_python" "$type_root/src/build_font.py" "$type_root/build/OrraeSans-Raw.ttf"
-"$fontforge_bin" -script "$type_root/src/clean_font.py" \
-  "$type_root/build/OrraeSans-Raw.ttf" \
-  "$type_root/dist/OrraeSans-Regular.ttf" \
-  "$type_root/dist/OrraeSans-Regular.otf"
+"$fonttools_python" "$type_root/src/build_font.py" "$generated_ufo"
+diff -ru "$canonical_ufo" "$generated_ufo"
+
+"$fontmake_bin" -u "$canonical_ufo" -o ttf \
+  --output-path "$type_root/dist/OrraeSans-Regular.ttf" \
+  --validate-ufo --no-autohint --production-names
+"$fontmake_bin" -u "$canonical_ufo" -o otf \
+  --output-path "$type_root/dist/OrraeSans-Regular.otf" \
+  --validate-ufo --no-autohint --production-names
 
 "$fonttools_python" "$type_root/src/normalize_font.py" \
   "$type_root/dist/OrraeSans-Regular.ttf" \
   "$type_root/dist/OrraeSans-Regular.otf"
 
-cp "$type_root/dist/OrraeSans-Regular.ttf" "$type_root/dist/OrraeSans-Regular-web.ttf"
-"$woff2_bin" "$type_root/dist/OrraeSans-Regular-web.ttf"
-mv "$type_root/dist/OrraeSans-Regular-web.woff2" "$type_root/dist/OrraeSans-Regular.woff2"
-rm "$type_root/dist/OrraeSans-Regular-web.ttf"
+"$fonttools_python" -m fontTools.ttLib.woff2 compress \
+  "$type_root/dist/OrraeSans-Regular.ttf" \
+  -o "$type_root/dist/OrraeSans-Regular.woff2"
 cp "$type_root/src/orrae-sans.css" "$type_root/dist/orrae-sans.css"
 
 "$fonttools_python" -m fontTools.ttx -l "$type_root/dist/OrraeSans-Regular.ttf"
 "$fonttools_python" -m fontTools.ttx -l "$type_root/dist/OrraeSans-Regular.otf"
 "$fonttools_python" -m fontTools.ttx -l "$type_root/dist/OrraeSans-Regular.woff2"
-fontlint "$type_root/dist/OrraeSans-Regular.ttf"
-fontlint "$type_root/dist/OrraeSans-Regular.otf"
 hb-shape "$type_root/dist/OrraeSans-Regular.ttf" 'HAMBURGEFONS 0123456789'
 hb-shape --features=ss01 "$type_root/dist/OrraeSans-Regular.ttf" 'A'
 

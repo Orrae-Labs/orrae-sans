@@ -1,0 +1,35 @@
+{
+  "name": "@orrae-labs/orrae-sans",
+  "version": "1.0.0",
+  "description": "The Orrae Sans caps-only display typeface.",
+  "license": "OFL-1.1",
+  "author": "Orrae Labs LLC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Orrae-Labs/orrae-sans.git"
+  },
+  "homepage": "https://github.com/Orrae-Labs/orrae-sans",
+  "bugs": "https://github.com/Orrae-Labs/orrae-sans/issues",
+  "style": "dist/orrae-sans.css",
+  "files": [
+    "dist/OrraeSans-Regular.otf",
+    "dist/OrraeSans-Regular.ttf",
+    "dist/OrraeSans-Regular.woff2",
+    "dist/orrae-sans.css",
+    "OFL.txt",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "./src/build-font.sh"
+  },
+  "keywords": [
+    "font",
+    "typeface",
+    "display-font",
+    "woff2",
+    "open-font-license"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}

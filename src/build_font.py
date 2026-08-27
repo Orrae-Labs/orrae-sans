@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the deterministic Orrae Sans typeface with FontTools.
+"""Generate the deterministic Orrae Sans UFO source.
 
 The caps-only system uses a shared modular geometry. Lowercase code points
 intentionally map to uppercase glyphs.
@@ -9,31 +9,35 @@ from __future__ import annotations
 
 import math
 import sys
+import unicodedata
 from pathlib import Path
 
-from fontTools.fontBuilder import FontBuilder
-from fontTools.feaLib.builder import addOpenTypeFeaturesFromString
-from fontTools.pens.cu2quPen import Cu2QuPen
-from fontTools.pens.ttGlyphPen import TTGlyphPen
+from fontTools.agl import UV2AGL
+from fontTools.pens.transformPen import TransformPen
+from ufoLib2 import Font
+from ufoLib2.objects import Anchor, Component
 
 
 UPM = 1000
-ASCENDER = 800
-DESCENDER = -200
+ASCENDER = 950
+DESCENDER = -300
 CAP = 700
 STROKE = 112
 THIN = 62
 ROUND = 250
-VERSION = "0.200"
+VERSION_MAJOR = 1
+VERSION_MINOR = 0
 FAMILY = "Orrae Sans"
 STYLE = "Regular"
 PS_NAME = "OrraeSans-Regular"
-BUILD_TIMESTAMP = 3_870_547_200  # 2026-08-26 00:00:00 UTC, seconds since 1904.
-
-
-def cubic_pen():
-    target = TTGlyphPen(None)
-    return target, Cu2QuPen(target, max_err=1.0, reverse_direction=False)
+COPYRIGHT = (
+    "Copyright 2026 The Orrae Sans Project Authors "
+    "(https://github.com/Orrae-Labs/orrae-sans)"
+)
+LICENSE = (
+    "This Font Software is licensed under the SIL Open Font License, Version 1.1. "
+    "This license is available with a FAQ at: https://openfontlicense.org"
+)
 
 
 def contour(pen, points):
@@ -183,17 +187,6 @@ def open_bowl(
     points.extend(arc(top - radius, inner_radius, 0, 90))
     points.append((0, top - stroke))
     contour(pen, points)
-
-
-def glyph_from(draw):
-    target, pen = cubic_pen()
-    draw(pen)
-    return target.glyph()
-
-
-def empty_glyph():
-    target = TTGlyphPen(None)
-    return target.glyph()
 
 
 def draw_notdef(pen):
@@ -591,6 +584,292 @@ DIGIT_DRAWERS = {
 DIGIT_WIDTHS = {name: 790 if name in {"zero", "six", "eight", "nine"} else 760 for name in DIGIT_DRAWERS}
 
 
+def draw_quote(pen, double=False, low=False):
+    y0 = 40 if low else 510
+    y1 = 235 if low else CAP
+    rounded_bar(pen, 0, y0, 72, y1, 32)
+    stroke_line(pen, 42, y0 + 40, 2, y0 - 55, 34)
+    if double:
+        rounded_bar(pen, 150, y0, 222, y1, 32)
+        stroke_line(pen, 192, y0 + 40, 152, y0 - 55, 34)
+
+
+def draw_bracket(pen, right=False):
+    x = 230 if right else 0
+    rect(pen, x, 0, x + 70, CAP)
+    rect(pen, 0, CAP - 70, 300, CAP)
+    rect(pen, 0, 0, 300, 70)
+
+
+def draw_brace(pen, right=False):
+    target = TransformPen(pen, (-1, 0, 0, 1, 300, 0)) if right else pen
+    rounded_bar(target, 0, CAP - 70, 170, CAP, 35)
+    rounded_bar(target, 0, 0, 170, 70, 35)
+    rounded_bar(target, 100, 315, 230, 385, 35)
+    rect(target, 0, 70, 70, 630)
+
+
+def draw_chevron(pen, right=False, double=False):
+    starts = [0, 210] if double else [0]
+    for start in starts:
+        if right:
+            stroke_line(pen, start + 15, 630, start + 240, 350, 72)
+            stroke_line(pen, start + 240, 350, start + 15, 70, 72)
+        else:
+            stroke_line(pen, start + 240, 630, start + 15, 350, 72)
+            stroke_line(pen, start + 15, 350, start + 240, 70, 72)
+
+
+def draw_ring_outline(pen, diameter=250, stroke=62, y=225):
+    round_rect(pen, 0, y, diameter, y + diameter, diameter / 2)
+    round_rect(
+        pen,
+        stroke,
+        y + stroke,
+        diameter - stroke,
+        y + diameter - stroke,
+        diameter / 2 - stroke,
+        reverse=True,
+    )
+
+
+def draw_percent(pen):
+    draw_ring_outline(pen, 220, 55, 465)
+    draw_ring_outline(TransformPen(pen, (1, 0, 0, 1, 430, -465)), 220, 55, 465)
+    stroke_line(pen, 125, 35, 535, 665, 70)
+
+
+def draw_ampersand(pen):
+    round_rect(pen, 80, 270, 570, CAP, 150)
+    round_rect(pen, 180, 375, 470, 595, 55, reverse=True)
+    round_rect(pen, 0, 0, 670, 420, 150)
+    round_rect(pen, 115, 105, 515, 310, 55, reverse=True)
+    stroke_line(pen, 390, 255, 720, -10, 92)
+
+
+def draw_at(pen):
+    round_rect(pen, 0, -35, 850, CAP, 250)
+    round_rect(pen, STROKE, 77, 738, CAP - STROKE, 140, reverse=True)
+    draw_o(TransformPen(pen, (0.55, 0, 0, 0.55, 282, 155)), 650)
+    rounded_bar(pen, 630, 160, 742, 475, 50)
+
+
+def draw_hash(pen):
+    stroke_line(pen, 210, -25, 310, 725, 70)
+    stroke_line(pen, 510, -25, 610, 725, 70)
+    rect(pen, 65, 205, 735, 285)
+    rect(pen, 85, 440, 755, 520)
+
+
+def draw_asterisk(pen):
+    stroke_line(pen, 300, 125, 300, 620, 70)
+    stroke_line(pen, 85, 250, 515, 495, 70)
+    stroke_line(pen, 515, 250, 85, 495, 70)
+
+
+def draw_currency(pen, kind):
+    if kind in {"cent", "dollar"}:
+        draw_c(pen, 620)
+        stroke_line(pen, 335, -80, 335, 780, 58)
+        if kind == "dollar":
+            rect(pen, 275, 0, 620, STROKE)
+            rect(pen, 0, CAP - STROKE, 355, CAP)
+    elif kind == "pound":
+        rounded_bar(pen, 115, 0, 700, STROKE, 45)
+        rounded_bar(pen, 95, 285, 585, 385, 45)
+        stroke_line(pen, 245, 30, 350, 610, 100)
+        rounded_bar(pen, 295, 588, 650, CAP, 50)
+    elif kind == "yen":
+        draw_y(pen, 720)
+        rect(pen, 130, 235, 590, 305)
+        rect(pen, 160, 375, 560, 445)
+    elif kind == "euro":
+        draw_c(pen, 730)
+        rect(pen, 0, 225, 570, 305)
+        rect(pen, 0, 395, 570, 475)
+
+
+def draw_section(pen):
+    draw_s(TransformPen(pen, (0.82, 0, 0, 0.82, 55, 145)), 760)
+    draw_s(TransformPen(pen, (0.82, 0, 0, 0.82, 55, -145)), 760)
+
+
+def draw_pilcrow(pen):
+    round_rect(pen, 0, 280, 650, CAP, 190)
+    round_rect(pen, 112, 392, 430, 588, 65, reverse=True)
+    rect(pen, 430, 0, 542, CAP)
+    rect(pen, 255, 0, 367, 390)
+
+
+def draw_copyright_like(pen, letter):
+    draw_ring_outline(pen, 700, 78, 0)
+    drawer = draw_c if letter == "C" else draw_r
+    inner_width = 430 if letter == "C" else 450
+    drawer(TransformPen(pen, (0.56, 0, 0, 0.56, 145, 155)), inner_width)
+
+
+def draw_trademark(pen):
+    draw_t(TransformPen(pen, (0.6, 0, 0, 0.6, 0, 280)), 600)
+    draw_m(TransformPen(pen, (0.55, 0, 0, 0.55, 430, 280)), 850)
+
+
+def draw_math_cross(pen):
+    stroke_line(pen, 70, 90, 550, 610, 82)
+    stroke_line(pen, 550, 90, 70, 610, 82)
+
+
+def draw_divide(pen):
+    rect(pen, 0, 310, 620, 390)
+    round_rect(pen, 260, 520, 360, 620, 30)
+    round_rect(pen, 260, 80, 360, 180, 30)
+
+
+def draw_question(pen, inverted=False):
+    target = TransformPen(pen, (1, 0, 0, -1 if inverted else 1, 0, CAP if inverted else 0))
+    rounded_bar(target, 0, CAP - STROKE, 510, CAP, STROKE / 2)
+    rounded_bar(target, 398, 380, 510, CAP, STROKE / 2)
+    stroke_line(target, 454, 410, 250, 255, 86)
+    rect(target, 205, 180, 317, 290)
+    round_rect(target, 205, 0, 317, STROKE, 28)
+
+
+def draw_exclam(pen, inverted=False):
+    target = TransformPen(pen, (1, 0, 0, -1 if inverted else 1, 0, CAP if inverted else 0))
+    rect(target, 0, 180, STROKE, CAP)
+    round_rect(target, 0, 0, STROKE, STROKE, 28)
+
+
+def draw_generic_symbol(pen, cp):
+    # Remaining symbols use a restrained, legible construction from the same
+    # stroke vocabulary as the alphabet.
+    if cp == 0x00B0:
+        draw_ring_outline(pen, 250, 62, 420)
+    elif cp == 0x00B7:
+        round_rect(pen, 0, 294, STROKE, 406, 28)
+    elif cp == 0x2022:
+        round_rect(pen, 0, 235, 230, 465, 115)
+    elif cp == 0x2026:
+        for x in (0, 210, 420):
+            round_rect(pen, x, 0, x + STROKE, STROKE, 28)
+    else:
+        draw_ring_outline(pen, 360, 70, 170)
+
+
+def draw_dotted_circle(pen):
+    for angle in range(0, 360, 45):
+        radians = math.radians(angle)
+        x = 300 + 225 * math.cos(radians)
+        y = 350 + 225 * math.sin(radians)
+        round_rect(pen, x - 42, y - 42, x + 42, y + 42, 30)
+
+
+COMBINING_MARK_NAMES = {
+    0x0300: "gravecomb",
+    0x0301: "acutecomb",
+    0x0302: "circumflexcomb",
+    0x0303: "tildecomb",
+    0x0304: "macroncomb",
+    0x0306: "brevecomb",
+    0x0307: "dotaccentcomb",
+    0x0308: "dieresiscomb",
+    0x030A: "ringcomb",
+    0x030B: "hungarumlautcomb",
+    0x030C: "caroncomb",
+    0x0326: "commaaccentcomb",
+    0x0327: "cedillacomb",
+    0x0328: "ogonekcomb",
+}
+
+SPACING_TO_COMBINING = {
+    0x0060: 0x0300,
+    0x00A8: 0x0308,
+    0x00AF: 0x0304,
+    0x00B4: 0x0301,
+    0x00B8: 0x0327,
+    0x02C6: 0x0302,
+    0x02C7: 0x030C,
+    0x02D8: 0x0306,
+    0x02D9: 0x0307,
+    0x02DA: 0x030A,
+    0x02DB: 0x0328,
+    0x02DC: 0x0303,
+    0x02DD: 0x030B,
+}
+
+
+def draw_mark(pen, cp):
+    if cp == 0x0300:
+        stroke_line(pen, -125, 895, 60, 750, 58)
+    elif cp == 0x0301:
+        stroke_line(pen, -60, 750, 125, 895, 58)
+    elif cp == 0x0302:
+        stroke_line(pen, -150, 765, 0, 900, 52)
+        stroke_line(pen, 0, 900, 150, 765, 52)
+    elif cp == 0x0303:
+        stroke_line(pen, -175, 795, -55, 865, 48)
+        stroke_line(pen, -55, 865, 55, 795, 48)
+        stroke_line(pen, 55, 795, 175, 865, 48)
+    elif cp == 0x0304:
+        rounded_bar(pen, -175, 805, 175, 865, 25)
+    elif cp == 0x0306:
+        pen.moveTo((-175, 885))
+        pen.curveTo((-130, 735), (130, 735), (175, 885))
+        pen.lineTo((115, 900))
+        pen.curveTo((75, 810), (-75, 810), (-115, 900))
+        pen.closePath()
+    elif cp == 0x0307:
+        round_rect(pen, -55, 790, 55, 900, 35)
+    elif cp == 0x0308:
+        round_rect(pen, -150, 790, -50, 890, 32)
+        round_rect(pen, 50, 790, 150, 890, 32)
+    elif cp == 0x030A:
+        round_rect(pen, -100, 755, 100, 955, 100)
+        round_rect(pen, -42, 813, 42, 897, 42, reverse=True)
+    elif cp == 0x030B:
+        stroke_line(pen, -170, 750, -25, 895, 50)
+        stroke_line(pen, 25, 750, 170, 895, 50)
+    elif cp == 0x030C:
+        stroke_line(pen, -150, 895, 0, 760, 52)
+        stroke_line(pen, 0, 760, 150, 895, 52)
+    elif cp in {0x0326, 0x0327}:
+        stroke_line(pen, 45, -45, -45, -205, 54)
+        rounded_bar(pen, -45, -205, 70, -145, 25)
+    elif cp == 0x0328:
+        stroke_line(pen, 45, -15, -45, -165, 54)
+        rounded_bar(pen, -45, -205, 85, -145, 25)
+
+
+CORE_CODEPOINTS = {
+    0x0024,0x0025,0x0026,0x002B,0x003C,0x003D,0x003E,0x0040,0x005E,0x007C,0x007E,0x00A2,
+    0x00A3,0x00A5,0x00A7,0x00A9,0x00AE,0x00B0,0x00B6,0x00D7,0x00F7,0x20AC,0x2122,0x2212,
+    0x0020,0x00A0,0x0021,0x0022,0x0023,0x0027,0x0028,0x0029,0x002A,0x002C,0x002D,0x002E,
+    0x002F,0x003A,0x003B,0x003F,0x005B,0x005C,0x005D,0x005F,0x007B,0x007D,0x00A1,0x00AB,
+    0x00B7,0x00BB,0x00BF,0x2013,0x2014,0x2018,0x2019,0x201A,0x201C,0x201D,0x201E,0x2022,
+    0x2026,0x2039,0x203A,0x0030,0x0031,0x0032,0x0033,0x0034,0x0035,0x0036,0x0037,0x0038,
+    0x0039,0x0060,0x00A8,0x00AF,0x00B4,0x00B8,0x02C6,0x02C7,0x02D8,0x02D9,0x02DA,0x02DB,
+    0x02DC,0x02DD,0x0300,0x0301,0x0302,0x0303,0x0304,0x0306,0x0307,0x0308,0x030A,0x030B,
+    0x030C,0x0326,0x0327,0x0328,0x0041,0x0042,0x0043,0x0044,0x0045,0x0046,0x0047,0x0048,
+    0x0049,0x004A,0x004B,0x004C,0x004D,0x004E,0x004F,0x0050,0x0051,0x0052,0x0053,0x0054,
+    0x0055,0x0056,0x0057,0x0058,0x0059,0x005A,0x0061,0x0062,0x0063,0x0064,0x0065,0x0066,
+    0x0067,0x0068,0x0069,0x006A,0x006B,0x006C,0x006D,0x006E,0x006F,0x0070,0x0071,0x0072,
+    0x0073,0x0074,0x0075,0x0076,0x0077,0x0078,0x0079,0x007A,0x00AA,0x00BA,0x00C0,0x00C1,
+    0x00C2,0x00C3,0x00C4,0x00C5,0x00C6,0x00C7,0x00C8,0x00C9,0x00CA,0x00CB,0x00CC,0x00CD,
+    0x00CE,0x00CF,0x00D0,0x00D1,0x00D2,0x00D3,0x00D4,0x00D5,0x00D6,0x00D8,0x00D9,0x00DA,
+    0x00DB,0x00DC,0x00DD,0x00DE,0x00DF,0x00E0,0x00E1,0x00E2,0x00E3,0x00E4,0x00E5,0x00E6,
+    0x00E7,0x00E8,0x00E9,0x00EA,0x00EB,0x00EC,0x00ED,0x00EE,0x00EF,0x00F0,0x00F1,0x00F2,
+    0x00F3,0x00F4,0x00F5,0x00F6,0x00F8,0x00F9,0x00FA,0x00FB,0x00FC,0x00FD,0x00FE,0x00FF,
+    0x0100,0x0101,0x0102,0x0103,0x0104,0x0105,0x0106,0x0107,0x010A,0x010B,0x010C,0x010D,
+    0x010E,0x010F,0x0110,0x0111,0x0112,0x0113,0x0116,0x0117,0x0118,0x0119,0x011A,0x011B,
+    0x011E,0x011F,0x0120,0x0121,0x0122,0x0123,0x0126,0x0127,0x012A,0x012B,0x012E,0x012F,
+    0x0130,0x0131,0x0136,0x0137,0x0139,0x013A,0x013B,0x013C,0x013D,0x013E,0x0141,0x0142,
+    0x0143,0x0144,0x0145,0x0146,0x0147,0x0148,0x0150,0x0151,0x0152,0x0153,0x0154,0x0155,
+    0x0158,0x0159,0x015A,0x015B,0x015E,0x015F,0x0160,0x0161,0x0164,0x0165,0x016A,0x016B,
+    0x016E,0x016F,0x0170,0x0171,0x0172,0x0173,0x0174,0x0175,0x0176,0x0177,0x0178,0x0179,
+    0x017A,0x017B,0x017C,0x017D,0x017E,0x0218,0x0219,0x021A,0x021B,0x0237,0x1E80,0x1E81,
+    0x1E82,0x1E83,0x1E84,0x1E85,0x1E9E,0x1EF2,0x1EF3,
+}
+
+
 def punctuation():
     return {
         "period": (lambda p: round_rect(p, 0, 0, STROKE, STROKE, 28), 112),
@@ -610,115 +889,360 @@ def punctuation():
     }
 
 
-def build(output_path: Path):
-    glyphs = {".notdef": glyph_from(draw_notdef), "space": empty_glyph()}
-    metrics = {".notdef": (780, 30), "space": (420, 0)}
-    cmap = {32: "space"}
+def glyph_name(cp):
+    return UV2AGL.get(cp) or f"uni{cp:04X}"
 
-    side = 88
-    for char, draw in LETTER_DRAWERS.items():
-        glyphs[char] = glyph_from(draw)
-        metrics[char] = (LETTER_WIDTHS[char] + side * 2, side)
-        cmap[ord(char)] = char
-        cmap[ord(char.lower())] = char
 
-    # A narrower display alternate is available through OpenType ss01.
-    glyphs["A.label"] = glyph_from(lambda pen: draw_a(pen, 860))
-    metrics["A.label"] = (860 + side * 2, side)
+def add_anchor(glyph, name, x, y):
+    glyph.anchors.append(Anchor(x=x, y=y, name=name))
 
-    digit_names = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
-    for value, name in enumerate(digit_names):
-        glyphs[name] = glyph_from(DIGIT_DRAWERS[name])
-        metrics[name] = (DIGIT_WIDTHS[name] + side * 2, side)
-        cmap[ord(str(value))] = name
 
-    punctuation_map = {
-        "period": ".",
-        "comma": ",",
-        "colon": ":",
-        "semicolon": ";",
-        "hyphen": "-",
-        "underscore": "_",
-        "slash": "/",
-        "backslash": "\\",
-        "plus": "+",
-        "equal": "=",
-        "parenleft": "(",
-        "parenright": ")",
-        "exclam": "!",
-        "question": "?",
+def add_outline(font, name, unicodes, draw, design_width, side=88, anchors=False):
+    glyph = font.newGlyph(name)
+    glyph.width = design_width + side * 2
+    glyph.unicodes = list(unicodes)
+    draw(TransformPen(glyph.getPen(), (1, 0, 0, 1, side, 0)))
+    if anchors:
+        add_anchor(glyph, "top", glyph.width / 2, CAP)
+        add_anchor(glyph, "bottom", glyph.width / 2, 0)
+    return glyph
+
+
+def add_components(font, name, unicodes, width, components, top_y=CAP):
+    glyph = font.newGlyph(name)
+    glyph.width = width
+    glyph.unicodes = list(unicodes)
+    for base, transform in components:
+        glyph.components.append(Component(base, transformation=transform))
+    add_anchor(glyph, "top", width / 2, top_y)
+    add_anchor(glyph, "bottom", width / 2, 0)
+    return glyph
+
+
+def draw_ae(pen):
+    draw_a(pen, 900)
+    rect(pen, 510, CAP - STROKE, 1120, CAP)
+    rect(pen, 510, 294, 1050, 406)
+    rect(pen, 510, 0, 1120, STROKE)
+
+
+def draw_oe(pen):
+    draw_o(pen, 840)
+    rect(pen, 505, CAP - STROKE, 1120, CAP)
+    rect(pen, 505, 294, 1050, 406)
+    rect(pen, 505, 0, 1120, STROKE)
+
+
+def draw_eth(pen):
+    draw_d(pen, 820)
+    rect(pen, -45, 294, 500, 406)
+
+
+def draw_oslash(pen):
+    draw_o(pen, 930)
+    stroke_line(pen, 95, -45, 835, 745, 78)
+
+
+def draw_hbar(pen):
+    draw_h(pen, 790)
+    rect(pen, -45, 480, 835, 560)
+
+
+def draw_lslash(pen):
+    draw_l(pen, 640)
+    stroke_line(pen, -20, 190, 520, 510, 78)
+
+
+def symbol_drawers():
+    existing = punctuation()
+    symbols = {
+        0x0021: ("exclam", 112, lambda p: draw_exclam(p)),
+        0x0022: ("quotedbl", 222, lambda p: draw_quote(p, double=True)),
+        0x0023: ("numbersign", 800, draw_hash),
+        0x0024: ("dollar", 620, lambda p: draw_currency(p, "dollar")),
+        0x0025: ("percent", 650, draw_percent),
+        0x0026: ("ampersand", 720, draw_ampersand),
+        0x0027: ("quotesingle", 72, draw_quote),
+        0x0028: ("parenleft", existing["parenleft"][1], existing["parenleft"][0]),
+        0x0029: ("parenright", existing["parenright"][1], existing["parenright"][0]),
+        0x002A: ("asterisk", 600, draw_asterisk),
+        0x002B: ("plus", existing["plus"][1], existing["plus"][0]),
+        0x002C: ("comma", existing["comma"][1], existing["comma"][0]),
+        0x002D: ("hyphen", existing["hyphen"][1], existing["hyphen"][0]),
+        0x002E: ("period", existing["period"][1], existing["period"][0]),
+        0x002F: ("slash", existing["slash"][1], existing["slash"][0]),
+        0x003A: ("colon", existing["colon"][1], existing["colon"][0]),
+        0x003B: ("semicolon", existing["semicolon"][1], existing["semicolon"][0]),
+        0x003C: ("less", 620, lambda p: draw_chevron(TransformPen(p, (1, 0, 0, 1, 170, 0)))),
+        0x003D: ("equal", existing["equal"][1], existing["equal"][0]),
+        0x003E: ("greater", 620, lambda p: draw_chevron(TransformPen(p, (1, 0, 0, 1, 170, 0)), right=True)),
+        0x003F: ("question", 510, lambda p: draw_question(p)),
+        0x0040: ("at", 850, draw_at),
+        0x005B: ("bracketleft", 300, draw_bracket),
+        0x005C: ("backslash", existing["backslash"][1], existing["backslash"][0]),
+        0x005D: ("bracketright", 300, lambda p: draw_bracket(p, right=True)),
+        0x005F: ("underscore", existing["underscore"][1], existing["underscore"][0]),
+        0x007B: ("braceleft", 300, draw_brace),
+        0x007C: ("bar", 112, lambda p: rect(p, 0, -90, STROKE, 790)),
+        0x007D: ("braceright", 300, lambda p: draw_brace(p, right=True)),
+        0x00A1: ("exclamdown", 112, lambda p: draw_exclam(p, inverted=True)),
+        0x00A2: ("cent", 620, lambda p: draw_currency(p, "cent")),
+        0x00A3: ("sterling", 700, lambda p: draw_currency(p, "pound")),
+        0x00A5: ("yen", 720, lambda p: draw_currency(p, "yen")),
+        0x00A7: ("section", 730, draw_section),
+        0x00A9: ("copyright", 700, lambda p: draw_copyright_like(p, "C")),
+        0x00AB: ("guillemotleft", 490, lambda p: draw_chevron(p, double=True)),
+        0x00AE: ("registered", 700, lambda p: draw_copyright_like(p, "R")),
+        0x00B0: ("degree", 250, lambda p: draw_generic_symbol(p, 0x00B0)),
+        0x00B6: ("paragraph", 650, draw_pilcrow),
+        0x00B7: ("periodcentered", 112, lambda p: draw_generic_symbol(p, 0x00B7)),
+        0x00BB: ("guillemotright", 490, lambda p: draw_chevron(p, right=True, double=True)),
+        0x00BF: ("questiondown", 510, lambda p: draw_question(p, inverted=True)),
+        0x00D7: ("multiply", 620, draw_math_cross),
+        0x00F7: ("divide", 620, draw_divide),
+        0x2013: ("endash", 650, lambda p: rect(p, 0, 310, 650, 390)),
+        0x2014: ("emdash", 1000, lambda p: rect(p, 0, 310, 1000, 390)),
+        0x2018: ("quoteleft", 72, draw_quote),
+        0x2019: ("quoteright", 72, draw_quote),
+        0x201A: ("quotesinglbase", 72, lambda p: draw_quote(p, low=True)),
+        0x201C: ("quotedblleft", 222, lambda p: draw_quote(p, double=True)),
+        0x201D: ("quotedblright", 222, lambda p: draw_quote(p, double=True)),
+        0x201E: ("quotedblbase", 222, lambda p: draw_quote(p, double=True, low=True)),
+        0x2022: ("bullet", 230, lambda p: draw_generic_symbol(p, 0x2022)),
+        0x2026: ("ellipsis", 532, lambda p: draw_generic_symbol(p, 0x2026)),
+        0x2039: ("guilsinglleft", 280, lambda p: draw_chevron(p)),
+        0x203A: ("guilsinglright", 280, lambda p: draw_chevron(p, right=True)),
+        0x20AC: ("Euro", 730, lambda p: draw_currency(p, "euro")),
+        0x2122: ("trademark", 900, draw_trademark),
+        0x2212: ("minus", 620, lambda p: rect(p, 0, 310, 620, 390)),
     }
-    for name, (draw, width) in punctuation().items():
-        glyphs[name] = glyph_from(draw)
-        metrics[name] = (width + side * 2, side)
-        cmap[ord(punctuation_map[name])] = name
+    return symbols
 
-    glyph_order = list(glyphs)
-    fb = FontBuilder(UPM, isTTF=True)
-    fb.setupGlyphOrder(glyph_order)
-    fb.setupCharacterMap(cmap)
-    fb.setupGlyf(glyphs)
-    fb.setupHorizontalMetrics(metrics)
-    fb.setupHorizontalHeader(ascent=ASCENDER, descent=DESCENDER, lineGap=100)
-    fb.setupNameTable(
-        {
-            "familyName": FAMILY,
-            "styleName": STYLE,
-            "uniqueFontIdentifier": f"Orrae Labs LLC:{PS_NAME}:{VERSION}",
-            "fullName": f"{FAMILY} {STYLE}",
-            "psName": PS_NAME,
-            "version": f"Version {VERSION}",
-            "manufacturer": "Orrae Labs LLC",
-            "designer": "Orrae Labs LLC",
-            "description": "Custom caps-only Orrae Sans typeface.",
-            "copyright": "Copyright 2026 Orrae Labs LLC. All rights reserved.",
-            "licenseDescription": "Copyright Orrae Labs LLC. All rights reserved.",
-        }
+
+def configure_info(font):
+    info = font.info
+    info.familyName = FAMILY
+    info.styleName = STYLE
+    info.styleMapFamilyName = FAMILY
+    info.styleMapStyleName = "regular"
+    info.unitsPerEm = UPM
+    info.ascender = ASCENDER
+    info.descender = DESCENDER
+    info.capHeight = CAP
+    info.xHeight = CAP
+    info.versionMajor = VERSION_MAJOR
+    info.versionMinor = VERSION_MINOR
+    info.copyright = COPYRIGHT
+    info.openTypeHeadCreated = "2026/08/26 00:00:00"
+    info.openTypeHeadLowestRecPPEM = 8
+    info.openTypeHheaAscender = ASCENDER
+    info.openTypeHheaDescender = DESCENDER
+    info.openTypeHheaLineGap = 0
+    info.openTypeNameDescription = "A wide caps-only display typeface."
+    info.openTypeNameDesigner = "TJ Challstrom"
+    info.openTypeNameDesignerURL = "https://github.com/Orrae-Labs/orrae-sans"
+    info.openTypeNameManufacturer = "Orrae Labs LLC"
+    info.openTypeNameManufacturerURL = "https://orrae.com"
+    info.openTypeNameLicense = LICENSE
+    info.openTypeNameLicenseURL = "https://openfontlicense.org"
+    info.openTypeNameUniqueID = "1.000;NONE;OrraeSans-Regular"
+    info.openTypeNameVersion = "Version 1.000"
+    info.openTypeOS2CodePageRanges = [0]
+    # Bit 6 (Regular) is derived from styleMapStyleName by the compiler.
+    info.openTypeOS2Selection = [7]
+    info.openTypeOS2Type = []
+    info.openTypeOS2TypoAscender = ASCENDER
+    info.openTypeOS2TypoDescender = DESCENDER
+    info.openTypeOS2TypoLineGap = 0
+    info.openTypeOS2VendorID = "NONE"
+    info.openTypeOS2WeightClass = 400
+    info.openTypeOS2WidthClass = 7
+    info.openTypeOS2WinAscent = 1000
+    info.openTypeOS2WinDescent = 300
+    info.openTypeGaspRangeRecords = [
+        {"rangeMaxPPEM": 65535, "rangeGaspBehavior": [0, 1, 2, 3]}
+    ]
+    info.postscriptBlueValues = [0, 0, 700, 700]
+    info.postscriptFontName = PS_NAME
+    info.postscriptFullName = f"{FAMILY} {STYLE}"
+    info.postscriptIsFixedPitch = False
+    info.postscriptUnderlinePosition = -110
+    info.postscriptUnderlineThickness = 62
+    info.postscriptWeightName = STYLE
+
+
+def build(output_path: Path):
+    font = Font()
+    configure_info(font)
+    side = 88
+
+    add_outline(font, ".notdef", [], draw_notdef, 720, side=30)
+    for name, unicodes, width in (
+        ("space", [0x0020], 420),
+        ("nbspace", [0x00A0], 420),
+    ):
+        glyph = font.newGlyph(name)
+        glyph.width = width
+        glyph.unicodes = unicodes
+
+    for char, draw in LETTER_DRAWERS.items():
+        extra = []
+        if char == "I":
+            extra.append(0x0131)
+        if char == "J":
+            extra.append(0x0237)
+        add_outline(
+            font,
+            char,
+            [ord(char), ord(char.lower()), *extra],
+            draw,
+            LETTER_WIDTHS[char],
+            anchors=True,
+        )
+
+    add_outline(font, "A.label", [], lambda p: draw_a(p, 860), 860, anchors=True)
+
+    for value, name in enumerate(DIGIT_DRAWERS):
+        add_outline(font, name, [ord(str(value))], DIGIT_DRAWERS[name], DIGIT_WIDTHS[name])
+
+    for cp, (name, width, draw) in symbol_drawers().items():
+        add_outline(font, name, [cp], draw, width)
+
+    add_outline(font, "uni25CC", [0x25CC], draw_dotted_circle, 600, anchors=True)
+
+    SPACING_TO_COMBINING.update({0x005E: 0x0302, 0x007E: 0x0303})
+    for cp, mark_cp in sorted(SPACING_TO_COMBINING.items()):
+        name = glyph_name(cp)
+        glyph = font.newGlyph(name)
+        glyph.width = 420
+        glyph.unicodes = [cp]
+        draw_mark(TransformPen(glyph.getPen(), (1, 0, 0, 1, 210, -40)), mark_cp)
+
+    for cp, name in COMBINING_MARK_NAMES.items():
+        glyph = font.newGlyph(name)
+        glyph.width = 0
+        glyph.unicodes = [cp]
+        draw_mark(glyph.getPen(), cp)
+        if cp < 0x0320:
+            add_anchor(glyph, "_top", 0, CAP)
+            add_anchor(glyph, "top", 0, 960)
+        else:
+            add_anchor(glyph, "_bottom", 0, 0)
+            add_anchor(glyph, "bottom", 0, -220)
+
+    caron_alt = font.newGlyph("caron.alt")
+    caron_alt.width = 0
+    stroke_line(caron_alt.getPen(), 55, 885, -25, 715, 54)
+    add_anchor(caron_alt, "_top", 0, CAP)
+
+    specials = [
+        ("AE", [0x00C6, 0x00E6], draw_ae, 1120),
+        ("Eth", [0x00D0, 0x00F0, 0x0110, 0x0111], draw_eth, 820),
+        ("Oslash", [0x00D8, 0x00F8], draw_oslash, 930),
+        ("Thorn", [0x00DE, 0x00FE], draw_p, 820),
+        ("germandbls", [0x00DF, 0x1E9E], draw_b, 760),
+        ("Hbar", [0x0126, 0x0127], draw_hbar, 790),
+        ("Lslash", [0x0141, 0x0142], draw_lslash, 640),
+        ("OE", [0x0152, 0x0153], draw_oe, 1120),
+    ]
+    handled = set()
+    for name, unicodes, draw, width in specials:
+        add_outline(font, name, unicodes, draw, width, anchors=True)
+        handled.update(unicodes)
+
+    add_components(
+        font,
+        "ordfeminine",
+        [0x00AA],
+        720,
+        [("A", (0.6, 0, 0, 0.6, 30, 260))],
+        top_y=CAP,
     )
-    fb.setupOS2(
-        sTypoAscender=ASCENDER,
-        sTypoDescender=DESCENDER,
-        sTypoLineGap=100,
-        usWinAscent=ASCENDER,
-        usWinDescent=abs(DESCENDER),
-        usWeightClass=400,
-        usWidthClass=7,
-        fsSelection=0x40,
-        sxHeight=500,
-        sCapHeight=CAP,
-        achVendID="ORRA",
+    add_components(
+        font,
+        "ordmasculine",
+        [0x00BA],
+        720,
+        [("O", (0.6, 0, 0, 0.6, 15, 260))],
+        top_y=CAP,
     )
-    fb.setupPost(italicAngle=0, underlinePosition=-110, underlineThickness=62, isFixedPitch=0)
-    fb.setupMaxp()
-    fb.setupHead(
-        fontRevision=float(VERSION),
-        created=BUILD_TIMESTAMP,
-        modified=BUILD_TIMESTAMP,
-    )
-    addOpenTypeFeaturesFromString(
-        fb.font,
-        """
-        feature kern {
-          pos O R 45;
-          pos R R 43;
-          pos R A -9;
-          pos A E 5;
-          pos L A 45;
-          pos L A.label 45;
-          pos A B -10;
-          pos A.label B 50;
-          pos B S 70;
-        } kern;
-        feature ss01 {
-          sub A by A.label;
-        } ss01;
-        """,
-    )
+    handled.update({0x00AA, 0x00BA, 0x0131, 0x0237})
+
+    composite_groups = {}
+    for cp in sorted(CORE_CODEPOINTS):
+        if cp in handled or any(cp in glyph.unicodes for glyph in font):
+            continue
+        decomposed = unicodedata.normalize("NFD", chr(cp))
+        if len(decomposed) < 2:
+            continue
+        base = decomposed[0].upper()
+        marks = tuple(ord(char) for char in decomposed[1:])
+        if base in LETTER_DRAWERS and all(mark in COMBINING_MARK_NAMES for mark in marks):
+            composite_groups.setdefault((base, marks), []).append(cp)
+
+    for (base, marks), unicodes in composite_groups.items():
+        preferred = next((cp for cp in unicodes if chr(cp).isupper()), unicodes[0])
+        name = glyph_name(preferred)
+        width = font[base].width
+        components = [(base, (1, 0, 0, 1, 0, 0))]
+        top_count = 0
+        bottom_count = 0
+        for mark in marks:
+            if mark < 0x0320:
+                y_offset = top_count * 190
+                top_count += 1
+            else:
+                y_offset = -bottom_count * 170
+                bottom_count += 1
+            mark_name = COMBINING_MARK_NAMES[mark]
+            if mark == 0x030C and base in {"D", "L", "T"}:
+                mark_name = "caron.alt"
+            components.append((mark_name, (1, 0, 0, 1, width / 2, y_offset)))
+        add_components(
+            font,
+            name,
+            unicodes,
+            width,
+            components,
+            top_y=CAP + top_count * 190,
+        )
+        handled.update(unicodes)
+
+    missing = CORE_CODEPOINTS - {cp for glyph in font for cp in glyph.unicodes}
+    if missing:
+        formatted = ", ".join(f"U+{cp:04X}" for cp in sorted(missing))
+        raise RuntimeError(f"GF Latin Core coverage is incomplete: {formatted}")
+
+    font.features.text = """
+languagesystem DFLT dflt;
+languagesystem latn dflt;
+
+feature kern {
+  pos O R 45;
+  pos R R 43;
+  pos R A -9;
+  pos A E 5;
+  pos L A 45;
+  pos L A.label 45;
+  pos A B -10;
+  pos A.label B 50;
+  pos B S 70;
+} kern;
+
+feature ss01 {
+  featureNames {
+    name "Narrow A";
+  };
+  sub A by A.label;
+} ss01;
+""".strip() + "\n"
+
+    font.glyphOrder = [glyph.name for glyph in font]
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fb.save(output_path)
+    font.save(output_path, overwrite=True, validate=True)
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        raise SystemExit("usage: build_font.py OUTPUT.ttf")
+        raise SystemExit("usage: build_font.py OUTPUT.ufo")
     build(Path(sys.argv[1]).resolve())

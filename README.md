@@ -1,19 +1,23 @@
 # Orrae Sans
 
-Orrae Sans is a custom caps-only typeface by Orrae Labs, extended into a
-deterministic display system.
+Orrae Sans is a wide caps-only display typeface by Orrae Labs. Lowercase code
+points intentionally use the uppercase forms.
 
-## Included
+The public repository contains only the font, its editable source, build and QA
+tools, documentation, and license. It contains no Orrae Labs logo or other
+brand artwork.
 
-- A–Z
-- numerals 0–9
-- essential punctuation
-- lowercase code points mapped to uppercase forms
+## Character and OpenType support
+
+- Google Fonts Latin Core coverage
+- spacing and combining diacritics with `mark` and `mkmk` positioning
+- numerals, punctuation, currency, mathematical, and editorial symbols
 - custom kerning
-- a narrower `A` alternate through OpenType Stylistic Set 1 (`ss01`)
+- a narrower `A` alternate through Stylistic Set 1 (`ss01`)
+- Latin script/language metadata and installable embedding
 
-This initial release is intended for titles, hardware markings, and other
-deliberate display use.
+The typeface is intended for headings, labels, technical markings, and other
+deliberate display use. It is not a conventional mixed-case text family.
 
 ## Downloads
 
@@ -24,9 +28,13 @@ Each release provides a versioned `.tar.zst` package containing:
 - `OrraeSans-Regular.ttf` — broad desktop and legacy compatibility
 - `OrraeSans-Regular.woff2` — web delivery
 - `orrae-sans.css` — web-font declaration
-- checksums, documentation, and the applicable license
+- checksums, documentation, authorship files, and `OFL.txt`
 
-Extract a package with:
+An npm-compatible `.tgz` is also built for CDN and package-registry workflows.
+It is an artifact only; publishing to npm requires Orrae Labs credentials and
+is not performed automatically.
+
+Extract the Zstandard package with:
 
 ```sh
 zstd -dc orrae-sans-VERSION.tar.zst | tar -xf -
@@ -35,18 +43,24 @@ zstd -dc orrae-sans-VERSION.tar.zst | tar -xf -
 Do not install the OTF and TTF simultaneously. They expose the same family and
 style names.
 
-## Reproducible build
+## Build from source
 
-On macOS with Homebrew:
+The checked-in UFO is the editable interchange source. The Python geometry
+generator is also retained and the build refuses to proceed if it does not
+reproduce that UFO exactly.
+
+On macOS:
 
 ```sh
-brew install fonttools fontforge woff2 harfbuzz
-./src/build-font.sh
+brew install harfbuzz zstd
+python3 -m venv .venv
+.venv/bin/pip install --requirement requirements.txt
+PATH="$PWD/.venv/bin:$PATH" FONTTOOLS_PYTHON="$PWD/.venv/bin/python" ./src/build-font.sh
 ```
 
-The build regenerates the TTF, OTF, and WOFF2 into the ignored `dist/`
-directory. TTF and OTF outputs are checked with FontForge `fontlint`; WOFF2
-tables and OpenType shaping are also verified.
+On Debian or Ubuntu, install `libharfbuzz-bin` and `zstd` instead of the two
+Homebrew packages. Generated TTF, OTF, WOFF2, CSS, and checksums are written to
+the ignored `dist/` directory.
 
 Verify a local build with:
 
@@ -55,15 +69,36 @@ cd dist
 shasum -a 256 -c SHA256SUMS
 ```
 
-The deterministic source is canonical. Generated font binaries are never
-committed.
+## Google Fonts QA
+
+FontBakery and `gftools` are pinned separately because their current dependency
+ranges conflict. Use independent virtual environments:
+
+```sh
+python3 -m venv .fontbakery-venv
+.fontbakery-venv/bin/pip install --requirement requirements-fontbakery.txt
+.fontbakery-venv/bin/fontbakery check-googlefonts --skip-network \
+  dist/OrraeSans-Regular.ttf
+
+python3 -m venv .gftools-venv
+.gftools-venv/bin/pip install --requirement requirements-gftools.txt
+PATH="$PWD/.gftools-venv/bin:$PATH" .gftools-venv/bin/gftools builder sources/config.yaml
+```
+
+The release gate is zero FontBakery failures. Some non-blocking heuristics and
+catalog-onboarding checks may remain; their disposition is documented in
+[`DISTRIBUTION.md`](DISTRIBUTION.md).
 
 ## Automated builds and releases
 
-GitHub Actions rebuilds and validates the font on every pull request and push.
-Pushing a version tag such as `v0.2.0` also creates a GitHub Release containing
-a font-only `.tar.zst` package plus its checksum.
+GitHub Actions rebuilds the font from UFO source and runs FontBakery on every
+pull request and push. A signed version tag such as `v1.0.0` additionally
+creates a GitHub Release with the `.tar.zst`, npm `.tgz`, and checksums.
+Generated binaries are never committed.
 
 ## License
 
-Copyright © 2026 Orrae Labs LLC. All rights reserved. See [`LICENSE`](LICENSE).
+Orrae Sans is licensed under the [SIL Open Font License 1.1](OFL.txt), without a
+Reserved Font Name. The license permits use, embedding, modification, and
+redistribution subject to its terms. Documents and graphics created with the
+font are not required to use the OFL.

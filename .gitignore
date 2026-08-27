@@ -1,6 +1,12 @@
 .DS_Store
+.venv/
+.fontbakery-venv/
+.gftools-venv/
+.ninja_log
+build.ninja
 build/
 dist/
+fonts/
 release/
 src/__pycache__/
 *.pyc

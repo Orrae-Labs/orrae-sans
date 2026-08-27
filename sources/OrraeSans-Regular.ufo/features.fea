@@ -1,0 +1,21 @@
+languagesystem DFLT dflt;
+languagesystem latn dflt;
+
+feature kern {
+  pos O R 45;
+  pos R R 43;
+  pos R A -9;
+  pos A E 5;
+  pos L A 45;
+  pos L A.label 45;
+  pos A B -10;
+  pos A.label B 50;
+  pos B S 70;
+} kern;
+
+feature ss01 {
+  featureNames {
+    name "Narrow A";
+  };
+  sub A by A.label;
+} ss01;

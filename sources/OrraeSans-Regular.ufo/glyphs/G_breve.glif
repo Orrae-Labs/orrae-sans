@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<glyph name="Gbreve" format="2">
+  <advance width="996"/>
+  <unicode hex="011E"/>
+  <unicode hex="011F"/>
+  <anchor x="498.0" y="890" name="top"/>
+  <anchor x="498.0" y="0" name="bottom"/>
+  <outline>
+    <component base="G"/>
+    <component base="brevecomb" xOffset="498.0"/>
+  </outline>
+</glyph>
